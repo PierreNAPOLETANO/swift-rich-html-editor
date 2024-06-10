@@ -2,106 +2,102 @@
 
 function hasLink() {
     return getAllAnchorsOfSelection().length > 0;
-}
-
-function getAllAnchorsOfSelection() {
+  }
+  
+  function getAllAnchorsOfSelection() {
     const range = getRange();
-    if (range === null) {
-        return [];
-    }
-
-    const anchorElements = [...swiftRichEditor.querySelectorAll("a[href]")];
-    return anchorElements.filter(element => doesElementInteractWithRange(element, range));
-}
-
-function getFirstAnchorOfSelection() {
+    return range
+      ? [...swiftRichEditor.querySelectorAll("a[href]")].filter((element) =>
+          doesElementInteractWithRange(element, range)
+        )
+      : [];
+  }
+  function getFirstAnchorOfSelection() {
     const anchors = getAllAnchorsOfSelection();
-    if (anchors.length <= 0) {
-        return null;
-    }
-    return anchors[0];
-}
-
-// MARK: Create and edit links
-
-function createLink(text, url) {
+    return anchors.length > 0 ? anchors[0] : null;
+  }
+  
+  // MARK: Create and edit links
+  
+  function createLink(text, url) {
     const range = getRange();
     if (range === null) {
-        return;
+      return;
     }
-
+  
     const trimmedText = text.trim();
     const formattedText = trimmedText === "" ? null : trimmedText;
-
+  
     if (range.collapsed) {
-        createLinkForCaret(formattedText, url, range);
+      createLinkForCaret(formattedText, url, range);
     } else {
-        createLinkForRange(formattedText, url);
+      createLinkForRange(formattedText, url);
     }
-}
-
-function createLinkForCaret(text, url, range) {
+  }
+  
+  function createLinkForCaret(text, url, range) {
     let anchor = getFirstAnchorOfSelection();
     if (anchor !== null) {
-        anchor.href = url;
-        updateAnchorText(anchor, text);
+      anchor.href = url;
+      updateAnchorText(anchor, text);
     } else {
-        anchor = document.createElement("a");
-        anchor.textContent = text || url;
-        anchor.href = url;
-        range.insertNode(anchor);
+      anchor = document.createElement("a");
+      anchor.textContent = text || url;
+      anchor.href = url;
+      range.insertNode(anchor);
     }
-
+  
     setCaretAtEndOfAnchor(anchor);
-}
-
-function createLinkForRange(text, url) {
+  }
+  
+  function createLinkForRange(text, url) {
     document.execCommand("createLink", false, url);
-    
+  
     if (text !== null) {
-        const anchor = getFirstAnchorOfSelection();
-        updateAnchorText(anchor, text);
+      const anchor = getFirstAnchorOfSelection();
+      updateAnchorText(anchor, text);
     }
-}
-
-// MARK: Remove link
-
-function unlink() {
+  }
+  
+  // MARK: Remove link
+  
+  function unlink() {
     let anchorNodes = getAllAnchorsOfSelection();
     anchorNodes.forEach(unlinkAnchorNode);
-}
-
-function unlinkAnchorNode(anchor) {
+  }
+  
+  function unlinkAnchorNode(anchor) {
     const selection = document.getSelection();
     if (selection.rangeCount <= 0) {
-        return;
+      return;
     }
-
+  
     const range = selection.getRangeAt(0);
     const rangeBackup = range.cloneRange();
-    
+  
     range.selectNodeContents(anchor);
     document.execCommand("unlink");
-    
+  
     selection.removeAllRanges();
     selection.addRange(rangeBackup);
-}
-
-// MARK: Utils
-
-function updateAnchorText(anchor, text) {
+  }
+  
+  // MARK: Utils
+  
+  function updateAnchorText(anchor, text) {
     if (text !== null && anchor.textContent !== text) {
-        anchor.textContent = text;
+      anchor.textContent = text;
     }
-}
-
-function setCaretAtEndOfAnchor(anchor) {
+  }
+  
+  function setCaretAtEndOfAnchor(anchor) {
     const range = new Range();
     range.setStart(anchor, 1);
     range.setEnd(anchor, 1);
     range.collapsed = true;
-
+  
     const selection = document.getSelection();
     selection.removeAllRanges();
     selection.addRange(range);
-}
+  }
+  
