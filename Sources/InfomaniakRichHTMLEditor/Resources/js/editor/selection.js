@@ -26,7 +26,6 @@ function computeCaretRect() {
     } else {
         const selectionNodeToFocus = getSelectionNodeToTarget(selection);
         lastFocusedSelectionGrabber = selectionNodeToFocus;
-    
         caretRect = (selectionNodeToFocus == null) ? null : getCaretRect(selectionNodeToFocus);
     }
     lastSelectionRange = selection.getRangeAt(0).cloneRange();

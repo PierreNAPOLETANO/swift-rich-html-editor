@@ -12,10 +12,7 @@ function getEditor() {
 
 function getRange() {
     const selection = document.getSelection();
-    if (selection.rangeCount <= 0) {
-        return null;
-    }
-    return selection.getRangeAt(0);
+    return selection.rangeCount > 0 ? selection.getRangeAt(0) : null;
 }
 
 // MARK: - Check element positions
@@ -38,10 +35,9 @@ function doesElementInteractWithRange(element, range) {
 
 function doesPositionMatchTargets(position, targets) {
     return targets.some(target => {
-        if (target === DOCUMENT_POSITION_SAME) {
-            return position === DOCUMENT_POSITION_SAME;
-        }
-        return (position & target) === target;
+        return target === DOCUMENT_POSITION_SAME
+            ? position === DOCUMENT_POSITION_SAME
+            : (position & target) === target;
     });
 }
 

@@ -1,107 +1,113 @@
-// MARK: - Detect links
+"use strict";
 
-function hasLink() {
-    return getAllAnchorsOfSelection().length > 0;
-}
+let lastSelectionRange = null;
+let lastFocusedSelectionGrabber = null;
 
-function getAllAnchorsOfSelection() {
-    const range = getRange();
-    if (range === null) {
-        return [];
+// MARK: - Compute caret position
+
+function computeAndReportCaretPosition() {
+    const caretRect = computeCaretRect();
+    if (caretRect == null) {
+        return;
     }
 
-    const anchorElements = [...getEditor().querySelectorAll("a[href]")];
-    return anchorElements.filter(element => doesElementInteractWithRange(element, range));
+    reportCaretPositionDidChange(caretRect);
 }
 
-function getFirstAnchorOfSelection() {
-    const anchors = getAllAnchorsOfSelection();
-    if (anchors.length <= 0) {
+function computeCaretRect() {
+    const selection = window.getSelection();
+    if (selection.rangeCount <= 0) {
         return null;
     }
-    return anchors[0];
-}
 
-// MARK: - Create and edit links
-
-function createLink(url, text) {
-    const range = getRange();
-    if (range === null) {
-        return;
-    }
-
-    const trimmedText = text.trim();
-    const formattedText = trimmedText === "" ? null : trimmedText;
-
-    if (range.collapsed) {
-        createLinkForCaret(url, formattedText, range);
+    let caretRect = null;
+    if (selection.isCollapsed) {
+        caretRect = getCaretRect();
     } else {
-        createLinkForRange(url, formattedText);
+        const selectionNodeToFocus = getSelectionNodeToTarget(selection);
+        lastFocusedSelectionGrabber = selectionNodeToFocus;
+
+        caretRect = (selectionNodeToFocus == null) ? null : getCaretRect(selectionNodeToFocus);
     }
-}
+    lastSelectionRange = selection.getRangeAt(0).cloneRange();
 
-function createLinkForCaret(url, text, range) {
-    let anchor = getFirstAnchorOfSelection();
-    if (anchor !== null) {
-        anchor.href = url;
-        updateAnchorText(anchor, text);
-    } else {
-        anchor = document.createElement("a");
-        anchor.textContent = text || url;
-        anchor.href = url;
-        range.insertNode(anchor);
-    }
-
-    setCaretAtEndOfAnchor(anchor);
-}
-
-function createLinkForRange(url, text) {
-    document.execCommand("createLink", false, url);
-    
-    if (text !== null) {
-        const anchor = getFirstAnchorOfSelection();
-        updateAnchorText(anchor, text);
-    }
-}
-
-// MARK: - Remove link
-
-function unlink() {
-    const anchorNodes = getAllAnchorsOfSelection();
-    anchorNodes.forEach(unlinkAnchorNode);
-}
-
-function unlinkAnchorNode(anchor) {
-    const selection = document.getSelection();
-    if (selection.rangeCount <= 0) {
-        return;
-    }
-
-    const range = selection.getRangeAt(0);
-    const rangeBackup = range.cloneRange();
-    
-    range.selectNodeContents(anchor);
-    document.execCommand("unlink");
-    
-    selection.removeAllRanges();
-    selection.addRange(rangeBackup);
+    return caretRect;
 }
 
 // MARK: - Utils
 
-function updateAnchorText(anchor, text) {
-    if (text !== null && anchor.textContent !== text) {
-        anchor.textContent = text;
+const SelectionGrabber = {
+    start: "Start",
+    end: "End",
+    unknown: "Unknown"
+};
+
+function getCaretRect(anchorNode) {
+    const range = getRange()?.cloneRange();
+    if (range == null) {
+        return null;
+    }
+
+    if (anchorNode !== undefined) {
+        range.selectNodeContents(anchorNode);
+    }
+
+    const rangeRects = range.getClientRects();
+    switch (rangeRects.length) {
+        case 0:
+            const node = anchorNode || window.getSelection().anchorNode;
+            const closestParentElement = getClosestParentNodeElement(node);
+            return closestParentElement.getBoundingClientRect();
+        case 1:
+            return rangeRects[0];
+        default:
+            return range.getBoundingClientRect();
     }
 }
 
-function setCaretAtEndOfAnchor(anchor) {
-    const range = new Range();
-    range.setStart(anchor, 1);
-    range.setEnd(anchor, 1);
-    range.collapsed = true;
+function getClosestParentNodeElement(node) {
+    if (node == null) {
+        return null;
+    } else if (node.nodeType === Node.ELEMENT_NODE) {
+        return node;
+    } else {
+        return getClosestParentNodeElement(node.parentNode);
+    }
+}
 
-    const selection = document.getSelection();
-    selection.removeAllRanges();
-    selection.addRange(range);
+function getSelectionNodeToTarget(selection) {
+    const movingGrabber = guessMostProbableMovingSelectionGrabber(selection.getRangeAt(0).cloneRange());
+
+    let selectionNodeToFocus = null;
+    switch (movingGrabber) {
+        case SelectionGrabber.start:
+            selectionNodeToFocus = selection.anchorNode;
+            break;
+        case SelectionGrabber.end:
+            selectionNodeToFocus = selection.focusNode;
+            break;
+        case SelectionGrabber.unknown:
+            if (lastFocusedSelectionGrabber != null) {
+                selectionNodeToFocus = lastFocusedSelectionGrabber;
+            }
+            break;
+    }
+
+    return selectionNodeToFocus;
+}
+
+function guessMostProbableMovingSelectionGrabber(selectionRange) {
+    if (lastSelectionRange == null) {
+        return SelectionGrabber.unknown;
+    }
+
+    if (lastSelectionRange.startContainer === selectionRange.startContainer && lastSelectionRange.endContainer === selectionRange.endContainer) {
+        if (lastSelectionRange.startOffset === selectionRange.startOffset && lastSelectionRange.endOffset === selectionRange.endOffset) {
+            return SelectionGrabber.unknown;
+        } else {
+            return (lastSelectionRange.endOffset !== selectionRange.endOffset) ? SelectionGrabber.end : SelectionGrabber.start;
+        }
+    } else {
+        return (lastSelectionRange.endContainer !== selectionRange.endContainer) ? SelectionGrabber.end : SelectionGrabber.start;
+    }
 }
