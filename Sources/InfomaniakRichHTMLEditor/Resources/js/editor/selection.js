@@ -66,13 +66,10 @@ function getCaretRect(anchorNode) {
 }
 
 function getClosestParentNodeElement(node) {
-    if (node == null) {
-        return null;
-    } else if (node.nodeType === Node.ELEMENT_NODE) {
-        return node;
-    } else {
-        return getClosestParentNodeElement(node.parentNode);
+    while (node && node.nodeType !== Node.ELEMENT_NODE) {
+        node = node.parentNode;
     }
+    return node;
 }
 
 function getSelectionNodeToTarget(selection) {

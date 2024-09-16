@@ -12,10 +12,7 @@ function getEditor() {
 
 function getRange() {
     const selection = document.getSelection();
-    if (selection.rangeCount <= 0) {
-        return null;
-    }
-    return selection.getRangeAt(0);
+    return selection.rangeCount ? selection.getRangeAt(0) : null;
 }
 
 // MARK: - Check element positions

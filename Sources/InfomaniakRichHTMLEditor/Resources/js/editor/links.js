@@ -15,11 +15,7 @@ function getAllAnchorsOfSelection() {
 }
 
 function getFirstAnchorOfSelection() {
-    const anchors = getAllAnchorsOfSelection();
-    if (anchors.length <= 0) {
-        return null;
-    }
-    return anchors[0];
+    return getAllAnchorsOfSelection()[0] || null;
 }
 
 // MARK: - Create and edit links
